@@ -1,5 +1,7 @@
 # dns.doctor
 
+[![ci](https://github.com/Avalntinus/dns-doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/Avalntinus/dns-doctor/actions/workflows/ci.yml)
+
 Periksa kesehatan DNS sebuah domain dalam satu halaman: record apa yang ada,
 apakah dua resolver publik sepakat, DNSSEC aktif atau tidak, dan apakah
 konfigurasi email (SPF/DMARC) benar — **lengkap dengan alasan di balik setiap
