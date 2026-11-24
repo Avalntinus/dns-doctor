@@ -12,12 +12,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "dns.doctor — periksa kesehatan DNS domain",
+  title: "dns.doctor: periksa kesehatan DNS domain",
   description:
     "Cek record DNS, kesepakatan antar resolver, DNSSEC, SPF, dan DMARC sebuah domain lengkap dengan alasannya.",
   applicationName: "dns.doctor",
   openGraph: {
-    title: "dns.doctor — periksa kesehatan DNS domain",
+    title: "dns.doctor: periksa kesehatan DNS domain",
     description:
       "Record, propagasi, DNSSEC, SPF, dan DMARC dalam satu laporan singkat.",
     type: "website",

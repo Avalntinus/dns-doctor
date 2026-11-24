@@ -5,85 +5,105 @@ import { GROUP_LABELS } from "@/lib/verdict";
 
 const GROUPS = ["alamat", "email", "otoritas", "keamanan", "propagasi"];
 
-const BADGE = {
-  OK: "bg-emerald-500/10 text-emerald-700 ring-emerald-500/25 dark:text-emerald-400",
-  WARN: "bg-amber-500/10 text-amber-700 ring-amber-500/25 dark:text-amber-400",
-  FAIL: "bg-rose-500/10 text-rose-700 ring-rose-500/25 dark:text-rose-400",
-};
-
-const DOT = {
-  OK: "bg-emerald-500",
-  WARN: "bg-amber-500",
-  FAIL: "bg-rose-500",
+const VERDICT = {
+  OK: { label: "Lolos", dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
+  WARN: { label: "Perhatian", dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
+  FAIL: { label: "Gagal", dot: "bg-rose-500", text: "text-rose-700 dark:text-rose-400" },
 };
 
 const EXAMPLES = ["cloudflare.com", "github.com", "example.com"];
 
-function Badge({ verdict }) {
+const SEVERITY = { FAIL: 0, WARN: 1, OK: 2 };
+
+function StatusLine({ verdict, className = "" }) {
+  const meta = VERDICT[verdict];
   return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset ${BADGE[verdict]}`}
-    >
-      {verdict}
+    <span className={`flex items-center gap-2 ${className}`}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`} />
+      <span className={`text-xs font-medium ${meta.text}`}>{meta.label}</span>
     </span>
-  );
-}
-
-function Summary({ report }) {
-  const items = [
-    ["OK", report.summary.ok],
-    ["WARN", report.summary.warn],
-    ["FAIL", report.summary.fail],
-  ];
-
-  return (
-    <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-      <span className="font-mono text-xs tracking-wide text-black/50 dark:text-white/50">
-        {report.domain}
-      </span>
-      <span className="h-3 w-px bg-black/10 dark:bg-white/15" />
-      {items.map(([verdict, count]) => (
-        <span key={verdict} className="flex items-center gap-1.5">
-          <span className={`h-1.5 w-1.5 rounded-full ${DOT[verdict]}`} />
-          <span className="tabular-nums font-medium">{count}</span>
-          <span className="text-black/50 dark:text-white/50">{verdict}</span>
-        </span>
-      ))}
-      {report.cached ? (
-        <span className="ml-auto font-mono text-[11px] text-black/40 dark:text-white/40">
-          dari cache
-        </span>
-      ) : null}
-    </div>
   );
 }
 
 function FindingRow({ finding }) {
   return (
-    <li className="grid gap-1 border-t border-black/[0.06] py-3 first:border-t-0 first:pt-0 dark:border-white/10 sm:grid-cols-[7rem_1fr_auto] sm:gap-x-4">
-      <span className="font-mono text-xs text-black/45 dark:text-white/45">
-        {finding.label}
-      </span>
+    <li className="grid gap-1.5 border-t border-black/[0.07] py-3 first:border-t-0 first:pt-0 dark:border-white/10 sm:grid-cols-[7.5rem_1fr] sm:gap-6">
+      <div className="flex items-center gap-2 sm:block">
+        <p className="font-mono text-xs text-black/65 dark:text-white/60">{finding.label}</p>
+        <StatusLine verdict={finding.verdict} className="sm:mt-1.5" />
+      </div>
+
       <div className="min-w-0">
-        <p className="break-words font-mono text-sm">{finding.value}</p>
-        <p className="mt-1 text-[13px] leading-5 text-black/60 dark:text-white/55">
+        <p className="break-words font-mono text-[13px] leading-6">{finding.value}</p>
+        <p className="mt-1 text-[13px] leading-6 text-black/65 dark:text-white/60">
           {finding.reason}
         </p>
         {finding.advice ? (
-          <p className="mt-1 text-[13px] leading-5 text-black/40 dark:text-white/35">
-            → {finding.advice}
+          <p className="mt-1 text-[13px] leading-6 text-black/65 dark:text-white/60">
+            <span className="font-medium">Saran:</span> {finding.advice}
           </p>
         ) : null}
-      </div>
-      <div className="sm:pt-0.5">
-        <Badge verdict={finding.verdict} />
       </div>
     </li>
   );
 }
 
+function Summary({ report }) {
+  const { ok, warn, fail } = report.summary;
+  const parts = fail > 0 ? [`${fail} gagal`, `${warn} perhatian`, `${ok} lolos`] : [`${ok} lolos`, `${warn} perhatian`, `${fail} gagal`];
+
+  return (
+    <div className="mt-10 border-t border-black/10 pt-5 dark:border-white/15">
+      <p className="font-mono text-[17px] tracking-[-0.01em]">{report.domain}</p>
+      <p className="mt-1 text-sm text-black/65 dark:text-white/60">
+        {report.findings.length} pemeriksaan: {parts.join(", ")}.
+      </p>
+    </div>
+  );
+}
+
+function Filter({ value, onChange, counts }) {
+  const options = [
+    ["semua", "Semua", counts.all],
+    ["perhatian", "Perlu perhatian", counts.attention],
+  ];
+
+  return (
+    <div className="mt-4 flex items-center gap-1 text-xs" role="group" aria-label="Saring temuan">
+      {options.map(([key, label, count]) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onChange(key)}
+          aria-pressed={value === key}
+          className={`rounded-md px-2 py-1 transition-colors ${
+            value === key
+              ? "bg-black/[0.06] font-medium text-black ring-1 ring-black/10 dark:bg-white/[0.12] dark:text-white dark:ring-white/15"
+              : "text-black/65 hover:bg-black/[0.04] dark:text-white/60 dark:hover:bg-white/[0.06]"
+          }`}
+        >
+          {label} <span className="tabular-nums opacity-60">{count}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ReportView({ report }) {
+  const [filter, setFilter] = useState("semua");
   const [copied, setCopied] = useState(false);
+
+  const counts = {
+    all: report.findings.length,
+    attention: report.findings.filter((item) => item.verdict !== "OK").length,
+  };
+
+  const visible = [...report.findings]
+    .filter((item) => (filter === "semua" ? true : item.verdict !== "OK"))
+    .sort((a, b) => {
+      if (filter === "perhatian") return SEVERITY[a.verdict] - SEVERITY[b.verdict];
+      return GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group);
+    });
 
   async function copyJson() {
     try {
@@ -98,18 +118,20 @@ function ReportView({ report }) {
   return (
     <section aria-live="polite">
       <Summary report={report} />
+      <Filter value={filter} onChange={setFilter} counts={counts} />
 
-      <div className="mt-6 space-y-4">
-        {GROUPS.map((group) => {
-          const findings = report.findings.filter((item) => item.group === group);
+      {visible.length === 0 ? (
+        <p className="mt-8 border-t border-black/10 pt-5 text-sm text-black/55 dark:border-white/15 dark:text-white/50">
+          Tidak ada temuan yang perlu perhatian. Semua record yang diperiksa lolos.
+        </p>
+      ) : (
+        GROUPS.map((group) => {
+          const findings = visible.filter((item) => item.group === group);
           if (findings.length === 0) return null;
 
           return (
-            <div
-              key={group}
-              className="rounded-xl border border-black/[0.08] bg-black/[0.015] p-4 dark:border-white/10 dark:bg-white/[0.02]"
-            >
-              <h2 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-black/40 dark:text-white/35">
+            <div key={group} className="mt-8">
+              <h2 className="mb-3 text-xs font-medium text-black/65 dark:text-white/60">
                 {GROUP_LABELS[group] ?? group}
               </h2>
               <ul>
@@ -119,19 +141,20 @@ function ReportView({ report }) {
               </ul>
             </div>
           );
-        })}
-      </div>
+        })
+      )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-10 flex flex-wrap items-center gap-4 border-t border-black/10 pt-4 dark:border-white/15">
         <button
           type="button"
           onClick={copyJson}
-          className="rounded-lg border border-black/10 px-3 py-1.5 font-mono text-xs transition-colors hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/[0.06]"
+          className="-my-1 py-1 text-xs text-black/50 underline decoration-black/20 underline-offset-4 transition-colors hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black/40 dark:text-white/45 dark:decoration-white/20 dark:hover:text-white dark:focus-visible:outline-white/40"
         >
-          {copied ? "tersalin ✓" : "copy JSON"}
+          {copied ? "Tersalin" : "Salin JSON"}
         </button>
-        <span className="font-mono text-[11px] text-black/35 dark:text-white/30">
-          {new Date(report.fetchedAt).toLocaleTimeString("id-ID")} · Cloudflare + Google DoH
+        <span className="font-mono text-[11px] text-black/55 dark:text-white/50">
+          {new Date(report.fetchedAt).toLocaleTimeString("id-ID")} · Cloudflare, Google
+          {report.cached ? " · cache" : ""}
         </span>
       </div>
     </section>
@@ -153,14 +176,13 @@ export default function Home() {
     setReport(null);
 
     try {
-      const response = await fetch(
-        `/api/lookup?domain=${encodeURIComponent(value)}`,
-        { cache: "no-store" },
-      );
+      const response = await fetch(`/api/lookup?domain=${encodeURIComponent(value)}`, {
+        cache: "no-store",
+      });
       const payload = await response.json();
 
       if (!response.ok) {
-        setError(payload?.error ?? "Terjadi kesalahan saat memeriksa domain.");
+        setError(payload?.error ?? "Pemeriksaan gagal. Coba lagi sebentar.");
         setStatus("error");
         return;
       }
@@ -168,7 +190,7 @@ export default function Home() {
       setReport(payload);
       setStatus("done");
     } catch {
-      setError("Tidak bisa menghubungi server. Periksa koneksi lalu coba lagi.");
+      setError("Server tidak merespons. Periksa koneksi lalu coba lagi.");
       setStatus("error");
     }
   }
@@ -181,19 +203,15 @@ export default function Home() {
   const loading = status === "loading";
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-12 sm:py-20">
+    <main className="mx-auto w-full max-w-3xl px-5 py-14 sm:py-20">
       <header>
-        <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-black/40 dark:text-white/40">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          dns.doctor
-        </p>
-        <h1 className="mt-6 text-[2rem] font-semibold leading-[1.15] tracking-tight sm:text-[2.75rem]">
-          Periksa kesehatan DNS
-          <br className="hidden sm:block" /> sebuah domain.
+        <p className="font-mono text-xs text-black/65 dark:text-white/60">dns.doctor</p>
+        <h1 className="mt-5 text-[1.9rem] font-semibold leading-[1.15] tracking-[-0.02em] sm:text-[2.4rem]">
+          Periksa kesehatan DNS sebuah domain.
         </h1>
-        <p className="mt-4 max-w-xl text-[15px] leading-7 text-black/55 dark:text-white/50">
-          Record, kesepakatan antar resolver, DNSSEC, sampai SPF dan DMARC — lengkap
-          dengan alasan di balik setiap peringatan.
+        <p className="mt-3 max-w-lg text-[15px] leading-7 text-black/65 dark:text-white/60">
+          Record, kesepakatan antar resolver, DNSSEC, SPF, dan DMARC. Setiap
+          peringatan disertai alasan dan saran perbaikan.
         </p>
       </header>
 
@@ -201,10 +219,7 @@ export default function Home() {
         <label htmlFor="domain" className="sr-only">
           Nama domain
         </label>
-        <div className="flex items-stretch gap-2 rounded-xl border border-black/10 bg-black/[0.015] p-1.5 transition-colors focus-within:border-black/25 dark:border-white/15 dark:bg-white/[0.02] dark:focus-within:border-white/30">
-          <span className="hidden select-none self-center pl-2.5 font-mono text-sm text-black/30 dark:text-white/25 sm:block">
-            https://
-          </span>
+        <div className="flex items-stretch gap-2 rounded-lg border border-black/15 bg-white p-1.5 transition-colors focus-within:border-black/40 dark:border-white/15 dark:bg-white/[0.03] dark:focus-within:border-white/35">
           <input
             id="domain"
             name="domain"
@@ -213,50 +228,47 @@ export default function Home() {
             placeholder="example.com"
             autoComplete="off"
             spellCheck={false}
-            className="min-w-0 flex-1 bg-transparent px-1 py-2 font-mono text-[15px] outline-none placeholder:text-black/25 dark:placeholder:text-white/20"
+            className="min-w-0 flex-1 bg-transparent px-2 py-1.5 font-mono text-[15px] outline-none placeholder:text-black/30 dark:placeholder:text-white/25"
           />
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85 disabled:opacity-50 dark:bg-white dark:text-black"
+            className="rounded-md bg-black px-4 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black/40 disabled:opacity-50 dark:bg-white dark:text-black dark:focus-visible:outline-white/50"
           >
-            {loading ? "Memeriksa…" : "Periksa"}
+            {loading ? "Memeriksa" : "Periksa"}
           </button>
         </div>
       </form>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[11px] text-black/30 dark:text-white/25">coba:</span>
-        {EXAMPLES.map((example) => (
-          <button
-            key={example}
-            type="button"
-            onClick={() => {
-              setInput(example);
-              check(example);
-            }}
-            className="rounded-md border border-black/[0.08] px-2 py-0.5 font-mono text-[11px] text-black/50 transition-colors hover:bg-black/[0.04] dark:border-white/10 dark:text-white/45 dark:hover:bg-white/[0.06]"
-          >
-            {example}
-          </button>
+      <p className="mt-3 text-xs text-black/65 dark:text-white/60">
+        Contoh:{" "}
+        {EXAMPLES.map((example, index) => (
+          <span key={example}>
+            {index > 0 ? ", " : ""}
+            <button
+              type="button"
+              onClick={() => {
+                setInput(example);
+                check(example);
+              }}
+              className="-my-1 inline-block py-1 underline decoration-black/20 underline-offset-4 transition-colors hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black/40 dark:decoration-white/20 dark:hover:text-white dark:focus-visible:outline-white/40"
+            >
+              {example}
+            </button>
+          </span>
         ))}
-      </div>
+      </p>
 
       {loading ? (
-        <div className="mt-10 space-y-3" aria-hidden="true">
-          {[0, 1, 2].map((row) => (
-            <div
-              key={row}
-              className="h-16 animate-pulse rounded-xl border border-black/[0.06] bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03]"
-            />
-          ))}
-        </div>
+        <p className="mt-8 text-sm text-black/65 dark:text-white/60">
+          Mengambil A, AAAA, MX, TXT, NS, CAA, dan DMARC dari Cloudflare dan Google.
+        </p>
       ) : null}
 
       {error ? (
         <div
           role="alert"
-          className="mt-8 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-sm leading-6 text-rose-700 dark:text-rose-300"
+          className="mt-8 rounded-lg border border-rose-500/25 bg-rose-500/[0.06] p-4 text-sm leading-6 text-rose-800 dark:text-rose-300"
         >
           {error}
         </div>
@@ -265,9 +277,9 @@ export default function Home() {
       {report ? <ReportView report={report} /> : null}
 
       {status === "idle" ? (
-        <p className="mt-12 max-w-xl border-t border-black/[0.06] pt-6 text-[13px] leading-6 text-black/45 dark:border-white/10 dark:text-white/40">
-          Satu domain per pemeriksaan. Hasil dibandingkan dari dua resolver publik
-          (Cloudflare dan Google) lalu disimpan di cache selama lima menit.
+        <p className="mt-10 max-w-lg border-t border-black/[0.08] pt-5 text-[13px] leading-6 text-black/45 dark:border-white/10 dark:text-white/40">
+          Satu domain per pemeriksaan. Hasil dari dua resolver publik dibandingkan
+          lalu disimpan di cache selama lima menit.
         </p>
       ) : null}
     </main>

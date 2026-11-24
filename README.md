@@ -9,7 +9,7 @@ apakah dua resolver publik sepakat, DNSSEC aktif atau tidak, dan apakah
 konfigurasi email (SPF/DMARC) sudah benar — lengkap dengan alasan di balik
 setiap peringatan, bukan cuma lampu merah.
 
-![Laporan dns.doctor untuk github.com — 6 OK, 3 WARN, dengan alasan GeoDNS dan DNSSEC](docs/dns-doctor.png)
+![Laporan dns.doctor untuk github.com: 6 lolos, 3 perlu perhatian, dengan alasan GeoDNS dan DNSSEC](docs/dns-doctor.png)
 
 ```
 cloudflare.com
