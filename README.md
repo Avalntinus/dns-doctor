@@ -4,7 +4,7 @@
 
 Periksa kesehatan DNS sebuah domain dalam satu halaman: record apa yang ada,
 apakah dua resolver publik sepakat, DNSSEC aktif atau tidak, dan apakah
-konfigurasi email (SPF/DMARC) benar — **lengkap dengan alasan di balik setiap
+konfigurasi email (SPF/DMARC) benar **lengkap dengan alasan di balik setiap
 peringatan**, bukan cuma lampu merah.
 
 ```
