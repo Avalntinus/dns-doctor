@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# dns.doctor
 
-## Getting Started
+Periksa kesehatan DNS sebuah domain dalam satu halaman: record apa yang ada,
+apakah dua resolver publik sepakat, DNSSEC aktif atau tidak, dan apakah
+konfigurasi email (SPF/DMARC) benar — **lengkap dengan alasan di balik setiap
+peringatan**, bukan cuma lampu merah.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+cloudflare.com
+  A        104.16.132.229, 104.16.133.229        OK
+  AAAA     2606:4700::6810:84e5                  OK
+  MX       10 mxa.global.inbound...              OK
+  SPF      -all · 6/10 lookup                    OK
+  DMARC    p=reject · rua aktif                  OK
+  DNSSEC   AD flag                               OK
+  Propagasi semua record konsisten               OK
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Yang diperiksa
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+| Grup | Item | Dasar penilaian |
+|---|---|---|
+| Alamat | A, AAAA | ada/tidak, CNAME terdeteksi |
+| Email | MX, SPF, DMARC | null MX, duplikat SPF, batas 10 lookup, `+all`, `p=none`, `pct<100` |
+| Otoritas | NS, CAA | delegasi terbaca, pembatasan CA |
+| Keamanan | DNSSEC | flag `AD` dari resolver |
+| Propagasi | A/AAAA/MX/TXT/NS/CAA/DMARC | jawaban berbeda antar resolver (GeoDNS/CDN ikut dijelaskan) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Cara kerja
 
-## Learn More
+```
+browser  ──►  /api/lookup?domain=…       (Next.js Route Handler)
+                    │
+                    ├─► Cloudflare DoH (JSON)
+                    └─► Google DoH (JSON)
+                          │
+                          ▼
+                  lib/verdict.js  →  findings + alasan
+```
 
-To learn more about Next.js, take a look at the following resources:
+Logika penilaian sengaja dipisah dari UI dan dari jaringan, sehingga bisa diuji
+tanpa internet dan tanpa browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Menjalankan
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm install
+pnpm dev        # http://localhost:3000
+pnpm test       # 71 tes, offline
+pnpm lint
+pnpm build
+```
 
-## Deploy on Vercel
+Butuh Node 22+ dan pnpm.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Keputusan desain
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **JavaScript + JSDoc, bukan TypeScript.** Tidak ada langkah kompilasi; tipe
+  ditulis sebagai komentar dan diperiksa editor lewat `checkJs`.
+- **Dua resolver, bukan lima.** Cukup untuk mendeteksi ketidaksepakatan, dan
+  menjaga beban ke resolver publik tetap wajar.
+- **Tidak membandingkan TTL antar resolver.** Selisih TTL itu normal karena
+  cache tiap resolver bergeser; membandingkannya menghasilkan false positive.
+  Yang dibandingkan hanya isi jawabannya.
+- **TXT dinormalisasi sebelum dibandingkan.** Cloudflare menjawab dengan tanda
+  kutip, Google tanpa — tanpa normalisasi record yang sama terlihat berbeda.
+- **Cache 5 menit per instance.** Di serverless ini best-effort, bukan jaminan.
+- **Rate limit 20 permintaan/menit per IP** untuk melindungi resolver publik.
+
+## Batasan
+
+- Satu domain per permintaan; tidak ada pemeriksaan massal atau enumerasi
+  subdomain.
+- DKIM hanya dicek keberadaan record per selector; tanda tangan kriptografis
+  tidak diverifikasi.
+- Hanya resolver JSON (Cloudflare, Google). Quad9/AdGuard memakai format wire.
+- Cache hilang saat cold start.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Zod · Vitest
+
+## Lisensi
+
+MIT
